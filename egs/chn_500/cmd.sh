@@ -1,0 +1,1 @@
+../aishell/cmd.sh
