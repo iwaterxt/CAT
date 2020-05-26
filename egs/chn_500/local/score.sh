@@ -7,7 +7,7 @@
 cmd=run.pl
 stage=0
 min_acwt=5
-max_acwt=10
+max_acwt=13
 acwt_factor=0.1   # the scaling factor for the acoustic scale. The scaling factor for acoustic likelihoods
                  # needs to be 0.5 ~1.0. However, the job submission script can only take integers as the
                  # job marker. That's why we set the acwt to be integers (5 ~ 10), but scale them with 0.1

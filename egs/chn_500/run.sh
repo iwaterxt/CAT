@@ -8,7 +8,7 @@
            ## This relates to the queue.
 
 . ./path.sh
-stage=1
+stage=7
 dir=`pwd -P`
 data=$dir/data
 #. utils/parse_options.sh
@@ -20,12 +20,12 @@ if [ $stage -le 1 ]; then
   #local/download_and_untar.sh $data $data_url resource_aishell || exit 1;
   #local/prepare_phn_dict.sh || exit 1;
   # Compile the lexicon and token FSTs
-  utils/ctc_compile_dict_token_chn.sh --dict-type "phn" \
-    data/local/dict_phn data/local/lang_phn_tmp data/lang_phn || exit 1;
+  #utils/ctc_compile_dict_token_chn.sh --dict-type "phn" \
+  #  data/local/dict_phn data/local/lang_phn_tmp data/lang_phn || exit 1;
   # Train and compile LMs. 
-  local/aishell_train_lms.sh data/train/text data/local/dict_phn/lexicon.txt data/local/lm_phn || exit 1;
+  #local/aishell_train_lms.sh data/train/text data/local/dict_phn/lexicon.txt data/local/lm_phn || exit 1;
   # Compile the language-model FST and the final decoding graph TLG.fst
-  local/aishell_decode_graph.sh data/local/lm_phn data/lang_phn data/lang_phn_test || exit 1;
+  #local/aishell_decode_graph.sh data/local/lm_phn data/lang_phn data/lang_phn_test || exit 1;
 fi
 
 
@@ -62,10 +62,10 @@ if [ $stage -le 3 ]; then
   # prepare denominator
   utils/prep_ctc_trans.py data/lang_phn/lexicon_numbers.txt data/train/text "<UNK>" > data/train/text_number
   cat data/train/text_number | sort -k 2 | uniq -f 1 > data/train/unique_text_number
-  mkdir -p data/den_meta
-  chain-est-phone-lm ark:data/train/unique_text_number data/den_meta/phone_lm.fst
-  utils/ctc_token_fst_corrected.py den data/lang_phn/tokens.txt | fstcompile | fstarcsort --sort_type=olabel > data/den_meta/T_den.fst
-  fstcompose data/den_meta/T_den.fst data/den_meta/phone_lm.fst > data/den_meta/den_lm.fst
+ # mkdir -p data/den_meta
+ # chain-est-phone-lm ark:data/train/unique_text_number data/den_meta/phone_lm.fst
+ # utils/ctc_token_fst_corrected.py den data/lang_phn/tokens.txt | fstcompile | fstarcsort --sort_type=olabel > data/den_meta/T_den.fst
+ # fstcompose data/den_meta/T_den.fst data/den_meta/phone_lm.fst > data/den_meta/den_lm.fst
   echo "prepare denominator finished"
   
 fi
@@ -76,22 +76,22 @@ if [ $stage -le 4 ]; then
   echo "prepare weight finished"
 
   feats_tr="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_tr/utt2spk scp:$data_tr/cmvn.scp scp:$data_tr/feats.scp ark:- \
-      | add-deltas ark:- ark:- | subsample-feats --n=3 ark:- ark:- |"
+      | /aifs/users/tx078/tools/kaldi-develop/src/featbin/splice-feats --left-context=1 --right-context=1 --skip-frames=3 ark:- ark:- |"
   #echo "$feats_tr"
   feats_cv="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp scp:$data_cv/feats.scp ark:- \
-      | add-deltas ark:- ark:- | subsample-feats --n=3 ark:- ark:- |"
+      | /aifs/users/tx078/tools/kaldi-develop/src/featbin/splice-feats --left-context=1 --right-context=1 --skip-frames=3  ark:- ark:- |"
 
   ark_dir=data/all_ark
   mkdir -p $ark_dir
   copy-feats "$feats_tr" "ark,scp:$ark_dir/tr.ark,$ark_dir/tr.scp" || exit 1
   copy-feats "$feats_cv" "ark,scp:$ark_dir/cv.ark,$ark_dir/cv.scp" || exit 1
   
-  echo "copy -feats finished"
-
+  echo "copy-feats finished"
   ark_dir=data/all_ark
   mkdir -p data/hdf5
   python utils/convert_to_hdf5.py $ark_dir/cv.scp $data_cv/text_number $data_cv/weight data/hdf5/cv.hdf5
   python utils/convert_to_hdf5.py $ark_dir/tr.scp $data_tr/text_number $data_tr/weight data/hdf5/tr.hdf5
+  echo "convert to hdf5 finish"
 fi
 
 data_test=data/tests
@@ -100,13 +100,13 @@ tests="ai_mcsntr_test400 accent_test ailab_tmjl_mangbiao_dec11"
 if [ $stage -le 5 ]; then
   for set in $tests; do
   	feats_test="ark,s,cs:apply-cmvn --norm-vars=true --utt2spk=ark:$data_test/$set/utt2spk scp:$data_test/$set/cmvn.scp scp:$data_test/$set/feats.scp ark:- \
-      		| add-deltas ark:- ark:- | subsample-feats --n=3 ark:- ark:- |"
+      		| /aifs/users/tx078/tools/kaldi-develop/src/featbin/splice-feats --left-context=1 --right-context=1 --skip-frames=3 ark:- ark:- |"
   	mkdir -p data/tests_post/${set}
   	copy-feats "$feats_test" "ark,scp:data/tests_post/${set}/test.ark,data/tests_post/${set}/test.scp"
   done
 fi
 
-if [ $stage -le -1 ]; then
+if [ $stage -le 6 ]; then
     echo "nn training."
     python steps/train.py --output_unit=121 --lamb=0.01 --data_path=$dir
 fi

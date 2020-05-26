@@ -12,8 +12,10 @@ srcdict=data/resource/lexicon.txt
 
 [ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
 
+
+cat $srcdict | grep -v "<s>" | grep -v "</s>" | grep -v "!SIL" | LANG= LC_ALL= sort | sed 's:([0-9])::g' > $dir/lexicon_words.txt
 # Raw dictionary preparation
-cat $srcdict | grep -v "!SIL" | \
+cat $dir/lexicon_words.txt | \
   perl -e 'while(<>){@A = split; if(! $seen{$A[0]}) {$seen{$A[0]} = 1; print $_;}}' \
   > $dir/lexicon_raw.txt || exit 1;
 

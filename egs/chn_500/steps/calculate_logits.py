@@ -10,7 +10,7 @@ import six
 import argparse
 from torch.autograd import Variable
 from model import BLSTM 
-os.environ['CUDA_VISIBLE_DEVICES']='2'
+os.environ['CUDA_VISIBLE_DEVICES']='7'
 
 class Model(nn.Module):
     def __init__(self, idim, hdim, K, n_layers, dropout):

@@ -20,6 +20,7 @@ import gc
 from torch.utils.data import Dataset, DataLoader
 from model import BLSTM
 from dataset import SpeechDataset, SpeechDatasetMem, PadCollate
+from prefetch_generator import BackgroundGenerator
 import argparse
 sys.path.append('../../src/ctc_crf')
 import ctc_crf_base
@@ -88,18 +89,21 @@ def train():
     #torch.backends.cudnn.enabled = False
     lr = 0.001
     optimizer = optim.Adam(model.parameters(), lr=lr)
-
-    tr_dataset = SpeechDatasetMem(args.data_path+"/data/hdf5/tr.hdf5")
-    tr_dataloader = DataLoader(tr_dataset, batch_size=batch_size, shuffle=True, num_workers=16, collate_fn=PadCollate())
-
-    cv_dataset = SpeechDatasetMem(args.data_path+"/data/hdf5/cv.hdf5")
-    cv_dataloader = DataLoader(cv_dataset, batch_size=batch_size/2, shuffle=False, num_workers=16, collate_fn=PadCollate())
+    print ("Loading training data....")
+    tr_dataset = SpeechDataset("/data/disk2/yuanrong/data_chn2000/data/tr.hdf5")
+    #tr_dataset = SpeechDataset(args.data_path+"/data/hdf5/tr.hdf5")
+    tr_dataloader = DataLoader(tr_dataset, batch_size=batch_size, shuffle=False, num_workers=24, collate_fn=PadCollate())
+    print ("Loading cross validation data....")
+    cv_dataset = SpeechDataset("/data/disk2/yuanrong/data_chn2000/data/cv.hdf5")
+    #cv_dataset = SpeechDataset(args.data_path+"/data/hdf5/cv.hdf5")
+    cv_dataloader = DataLoader(cv_dataset, batch_size=batch_size, shuffle=False, num_workers=16, collate_fn=PadCollate())
 
     prev_t = 0
     epoch = 0
     prev_cv_loss = np.inf
     tr_loss = 0
     model.train()
+    print ("start training....")
     while True:
         # training stage
         #torch.save(model.module.state_dict(), args.data_path+"/models/best_model")
